@@ -1,0 +1,32 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+
+# IDE and generated project files
+.vs/
+.vscode/
+.codex-plugin-analysis/
+*.csproj
+*.sln
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+
+# Unity Recorder output: generated files, not source assets
+Assets/StreamingAssets/360TurnTo2D/
+Recordings/
+
+# Large local 360 source videos; keep test images and plugin source in Git
+Assets/360/*.mp4
+
+# OS files
+.DS_Store
+Thumbs.db
