@@ -31,6 +31,41 @@
 - 视频 MP4 导出另需安装 [Unity Recorder](https://docs.unity3d.com/Packages/com.unity.recorder@4.0/manual/index.html) `4.0.3` 或兼容版本。  
   MP4 output also requires Unity Recorder `4.0.3` or a compatible version.
 
+## 360素材导入设置 / 360 Source Import Settings
+
+### 全景图片与序列帧 / Panorama Images and Image Sequences
+
+![Unity 360图片导入设置 / Unity 360 texture import settings](Docs/images/texture-import-settings.svg)
+
+在 Unity Project 面板中选中全景图片或全部序列帧，然后按以下方式设置：
+Select the panorama image, or every frame in an image sequence, in Unity's Project panel and use these settings:
+
+| 设置 / Setting | 推荐值 / Recommended value |
+| --- | --- |
+| Texture Type | `Default` |
+| Texture Shape | `2D` |
+| Non-Power of 2 | `None` |
+| Generate Mip Maps | Off / 关闭 |
+| Wrap Mode | `Repeat` |
+| Filter Mode | `Bilinear` |
+| Max Size | `16384`，或不小于原图最长边 / at least the source's longest edge |
+| Compression | `None` |
+
+设置完成后点击 **Apply**。`Non-Power of 2` 不能使用 `ToNearest`：例如 `12000 × 6000` 会被它缩小成 `8192 × 4096`，造成不可恢复的细节损失。
+Click **Apply** after changing the settings. Do not use `ToNearest` for `Non-Power of 2`: a `12000 × 6000` source would be resized to `8192 × 4096`, permanently discarding detail.
+
+打开 `GM → 360cube` 后检查窗口中的 `360 source`。12K素材应显示为 `12000 × 6000`；如果显示 `8192 × 4096`，说明Unity仍在使用缩小后的导入纹理。
+After opening `GM → 360cube`, verify the `360 source` line. A 12K source must show `12000 × 6000`. If it shows `8192 × 4096`, Unity is still using a downscaled imported texture.
+
+### 全景视频 / Panorama Video
+
+- 如目标平台可以直接解码原视频，优先关闭 VideoClip 的 `Transcode`，避免再次缩放和压缩。
+  Disable VideoClip `Transcode` when the target platform can decode the original video, avoiding another resize and compression pass.
+- 如果必须转码，保持原始尺寸并使用高质量编码设置。
+  If transcoding is required, retain the original dimensions and use high-quality encoding settings.
+- 超高分辨率视频是否可以实时解码取决于显卡、系统解码器和视频编码格式；需要完整保留细节时，优先使用 PNG 序列帧。
+  Real-time decoding of very high-resolution video depends on the GPU, system decoder, and codec. Prefer a PNG image sequence when maximum detail retention is required.
+
 ## 快速开始 / Quick Start
 
 1. 将本项目中的 `Assets/ScreenProjection` 导入 Unity 项目。  

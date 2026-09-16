@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+  <title id="title">Unity 360 texture import settings</title>
+  <desc id="desc">Recommended Unity import settings for full-resolution equirectangular panorama images and image sequences.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#171b24"/>
+      <stop offset="1" stop-color="#242b38"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="18" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="760" rx="28" fill="url(#bg)"/>
+  <text x="64" y="70" fill="#fff" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="32" font-weight="700">360图片 / 序列帧导入设置</text>
+  <text x="64" y="108" fill="#9da9bd" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="19">Unity import settings for panorama images and image sequences</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="145" width="712" height="530" rx="16" fill="#30343b" stroke="#505762"/>
+    <rect x="64" y="145" width="712" height="58" rx="16" fill="#3b4048"/>
+    <rect x="64" y="187" width="712" height="16" fill="#3b4048"/>
+    <text x="92" y="182" fill="#f4f6f8" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="22" font-weight="600">Texture 2D Import Settings</text>
+
+    <g font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="20">
+      <text x="100" y="248" fill="#c7ccd4">Texture Type</text>
+      <text x="430" y="248" fill="#fff" font-weight="600">Default</text>
+      <text x="100" y="296" fill="#c7ccd4">Texture Shape</text>
+      <text x="430" y="296" fill="#fff" font-weight="600">2D</text>
+
+      <rect x="84" y="317" width="670" height="58" rx="8" fill="#1f7a58" opacity="0.28" stroke="#43d89c"/>
+      <text x="100" y="353" fill="#d9fff0">Non-Power of 2</text>
+      <text x="430" y="353" fill="#62f0b5" font-weight="700">None ✓</text>
+
+      <text x="100" y="410" fill="#c7ccd4">Generate Mip Maps</text>
+      <text x="430" y="410" fill="#fff" font-weight="600">Off / 关闭</text>
+      <text x="100" y="458" fill="#c7ccd4">Wrap Mode</text>
+      <text x="430" y="458" fill="#fff" font-weight="600">Repeat</text>
+      <text x="100" y="506" fill="#c7ccd4">Filter Mode</text>
+      <text x="430" y="506" fill="#fff" font-weight="600">Bilinear</text>
+
+      <rect x="84" y="527" width="670" height="58" rx="8" fill="#1f7a58" opacity="0.28" stroke="#43d89c"/>
+      <text x="100" y="563" fill="#d9fff0">Max Size</text>
+      <text x="430" y="563" fill="#62f0b5" font-weight="700">16384</text>
+
+      <rect x="84" y="595" width="670" height="58" rx="8" fill="#1f7a58" opacity="0.28" stroke="#43d89c"/>
+      <text x="100" y="631" fill="#d9fff0">Compression</text>
+      <text x="430" y="631" fill="#62f0b5" font-weight="700">None</text>
+    </g>
+  </g>
+
+  <g>
+    <rect x="816" y="145" width="320" height="224" rx="16" fill="#421f27" stroke="#ff647c" stroke-width="2"/>
+    <text x="850" y="194" fill="#ff8da0" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24" font-weight="700">不要使用 / Avoid</text>
+    <text x="850" y="242" fill="#fff" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="21">Non-Power of 2</text>
+    <text x="850" y="280" fill="#ff8da0" font-family="Consolas, monospace" font-size="25" font-weight="700">ToNearest ✕</text>
+    <text x="850" y="326" fill="#dcb9bf" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17">12000 × 6000</text>
+    <text x="1004" y="326" fill="#ff8da0" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="17">→ 8192 × 4096</text>
+  </g>
+
+  <g>
+    <rect x="816" y="397" width="320" height="278" rx="16" fill="#23362f" stroke="#43d89c" stroke-width="2"/>
+    <text x="850" y="447" fill="#62f0b5" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="24" font-weight="700">应用后检查 / Verify</text>
+    <text x="850" y="496" fill="#cfe8df" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18">打开 GM → 360cube</text>
+    <text x="850" y="528" fill="#cfe8df" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="18">Open GM → 360cube</text>
+    <rect x="842" y="555" width="268" height="72" rx="10" fill="#17241f"/>
+    <text x="864" y="584" fill="#91a9a0" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="16">360 source</text>
+    <text x="864" y="612" fill="#62f0b5" font-family="Consolas, monospace" font-size="22" font-weight="700">12000 × 6000 ✓</text>
+    <text x="850" y="653" fill="#9fc4b6" font-family="Segoe UI, Microsoft YaHei, sans-serif" font-size="15">确认后再生成六面输出</text>
+  </g>
+</svg>
