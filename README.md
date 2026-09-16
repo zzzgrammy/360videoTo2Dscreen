@@ -17,6 +17,8 @@
   The six-face preview and dome use the same world-space ray projection for continuous seams.
 - 导出独立的 `Front`、`Back`、`Left`、`Right`、`Top`、`Bottom` 输出。  
   Exports independent `Front`, `Back`, `Left`, `Right`, `Top`, and `Bottom` outputs.
+- 根据输入全景分辨率、当前相机位置和每面四角，分别自动计算六面的最佳输出宽高。
+  Automatically calculates an independent optimal width and height for every face from the panorama resolution, current camera position, and wall corners.
 - 图片导出为 PNG，序列帧导出为六路 PNG 序列，视频使用 Unity Recorder 录制六路 MP4。  
   Images export as PNG, sequences export as six PNG sequences, and videos record as six MP4 files through Unity Recorder.
 - 视频尺寸自动补齐到偶数像素，兼容 H.264 / MP4 编码要求。  
@@ -43,7 +45,9 @@
    Enter Cube0 physical dimensions—width `X`, depth `Z`, height `Y`—then click **Create Cube0 (Six Faces)**.
 6. 把主相机移动到最佳观测点。预览与最终生成都使用此刻相机位置，不会自动重置。  
    Move the main camera to the best viewing point. Preview and export use this exact position and never reset it automatically.
-7. 选择生成方式：  
+7. 在窗口中检查六面的自动建议尺寸。`Resolution scale = 1` 保留输入图的角分辨率，`Maximum dimension` 限制单面最大边长与显存占用。
+   Review the six automatically recommended sizes. `Resolution scale = 1` preserves the source angular resolution, while `Maximum dimension` limits the longest face edge and VRAM usage.
+8. 选择生成方式：
    Choose an output mode:
    - 图片：**Generate Six PNG Images** / Images: **Generate Six PNG Images**
    - 序列帧：**Generate Six PNG Sequences** / Sequences: **Generate Six PNG Sequences**
@@ -149,6 +153,8 @@ git remote add origin git@github.com:<your-account>/<repository>.git
   The viewing point is the seam-continuity reference; viewing from elsewhere produces normal perspective differences.
 - 视频录制需要在 Play 模式运行，并由用户手动停止。  
   Video recording runs in Play mode and must be stopped manually.
+- 六面输出尺寸会在点击生成或开始录制时锁定；移动相机后再次生成会重新计算。高分辨率 PNG 可能需要大量显存。
+  Face sizes are locked when export or recording starts; exporting again after moving the camera recalculates them. High-resolution PNG output can require substantial VRAM.
 - 生成目录已在 `.gitignore` 中忽略，避免将大体积结果文件提交到 Git。  
   Generated output folders are ignored by `.gitignore` to avoid committing large files.
 - 本仓库尚未声明许可证；公开发布前请根据你的发布意图添加 `LICENSE` 文件。  

@@ -28,7 +28,7 @@ namespace Turn360To2D.Editor
         public static void ExportCurrentFacesAsPng(SixFaceProjectionOutput output)
         {
             if (output == null) return;
-            output.RenderAllFaces();
+            output.PrepareOutputsForExport();
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string directory = Path.Combine("Assets", "StreamingAssets", "360TurnTo2D", timestamp);
             Directory.CreateDirectory(directory);
@@ -62,6 +62,7 @@ namespace Turn360To2D.Editor
             string directory = Path.Combine("Assets", "StreamingAssets", "360TurnTo2D", timestamp);
             try
             {
+                output.PrepareOutputsForExport();
                 for (int frame = 0; frame < output.SequenceFrameCount; frame++)
                 {
                     EditorUtility.DisplayProgressBar("360 Turn To 2D", $"正在转换第 {frame + 1}/{output.SequenceFrameCount} 帧", (frame + 1f) / output.SequenceFrameCount);
@@ -103,7 +104,7 @@ namespace Turn360To2D.Editor
             if (GUILayout.Button("Apply Cube Layout + Render Six Outputs"))
             {
                 output.ApplyCubeLayout();
-                output.RenderAllFaces();
+                output.PrepareOutputsForExport();
             }
             if (GUILayout.Button("Start Convert")) ExportCurrentFacesAsPng(output);
 
@@ -153,7 +154,7 @@ namespace Turn360To2D.Editor
 
         public static void StartRecording(SixFaceProjectionOutput output)
         {
-            output.RenderAllFaces();
+            output.PrepareOutputsForExport();
             var settings = ScriptableObject.CreateInstance<RecorderControllerSettings>();
             settings.SetRecordModeToManual();
             settings.FrameRate = 30f;

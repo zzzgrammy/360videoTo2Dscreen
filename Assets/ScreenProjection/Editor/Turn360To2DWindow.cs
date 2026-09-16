@@ -23,7 +23,6 @@ namespace Turn360To2D.Editor
         private float newWidth = 7.371f;
         private float newDepth = 4.251f;
         private float newHeight = 3.5f;
-        private int newOutputHeight = 1080;
 
         [MenuItem("GM/360cube", false, 10)]
         public static void Open()
@@ -79,7 +78,7 @@ namespace Turn360To2D.Editor
             newWidth = Mathf.Max(0.001f, EditorGUILayout.FloatField("Width (X)", newWidth));
             newDepth = Mathf.Max(0.001f, EditorGUILayout.FloatField("Depth (Z)", newDepth));
             newHeight = Mathf.Max(0.001f, EditorGUILayout.FloatField("Height (Y)", newHeight));
-            newOutputHeight = Mathf.Max(1, EditorGUILayout.IntField("Output pixel height", newOutputHeight));
+            EditorGUILayout.HelpBox("Output width and height are calculated separately for every face from the panorama resolution, the viewing-camera position and the four wall corners.", MessageType.Info);
 
             EditorGUILayout.Space(10f);
             if (GUILayout.Button("Create Cube0 (Six Faces)", GUILayout.Height(30f)))
@@ -145,7 +144,6 @@ namespace Turn360To2D.Editor
             serialized.FindProperty("cubeWidth").floatValue = newWidth;
             serialized.FindProperty("cubeDepth").floatValue = newDepth;
             serialized.FindProperty("cubeHeight").floatValue = newHeight;
-            serialized.FindProperty("outputHeight").intValue = newOutputHeight;
             float eyeToFront = serialized.FindProperty("eyeToFrontWall").floatValue;
 
             if (newInputKind == SixFaceProjectionOutput.InputKind.Video && newVideoClip != null)
@@ -205,7 +203,10 @@ namespace Turn360To2D.Editor
             EditorGUILayout.PropertyField(serialized.FindProperty("cubeWidth"), new GUIContent("Width (X)"));
             EditorGUILayout.PropertyField(serialized.FindProperty("cubeDepth"), new GUIContent("Depth (Z)"));
             EditorGUILayout.PropertyField(serialized.FindProperty("cubeHeight"), new GUIContent("Height (Y)"));
-            EditorGUILayout.PropertyField(serialized.FindProperty("outputHeight"), new GUIContent("Output pixel height"));
+            EditorGUILayout.Space(6f);
+            EditorGUILayout.LabelField("Automatic output resolution", EditorStyles.boldLabel);
+            EditorGUILayout.PropertyField(serialized.FindProperty("outputResolutionScale"), new GUIContent("Resolution scale"));
+            EditorGUILayout.PropertyField(serialized.FindProperty("maximumOutputDimension"), new GUIContent("Maximum dimension"));
             EditorGUILayout.HelpBox("Move the viewing camera to the best observation point, then click Generate. Generation uses the camera's current position and will not reset it.", MessageType.Info);
 
             if (serialized.ApplyModifiedProperties())
@@ -215,6 +216,8 @@ namespace Turn360To2D.Editor
                 EditorUtility.SetDirty(projector);
             }
 
+            DrawRecommendedDimensions(projector);
+
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button("Apply Cube Size")) projector.ApplyCubeLayout();
@@ -222,6 +225,24 @@ namespace Turn360To2D.Editor
             }
 
             DrawGenerateControls(projector, kind);
+        }
+
+        private static void DrawRecommendedDimensions(SixFaceProjectionOutput projector)
+        {
+            EditorGUILayout.Space(6f);
+            if (!projector.TryGetSourceDimensions(out int sourceWidth, out int sourceHeight))
+            {
+                EditorGUILayout.HelpBox("Waiting for the 360 source dimensions. Video dimensions become available after the VideoPlayer is prepared.", MessageType.None);
+                return;
+            }
+
+            EditorGUILayout.LabelField($"360 source: {sourceWidth} × {sourceHeight}", EditorStyles.miniBoldLabel);
+            foreach (ScreenDirection direction in Enum.GetValues(typeof(ScreenDirection)))
+            {
+                if (projector.TryGetRecommendedOutputDimensions(direction, out int width, out int height))
+                    EditorGUILayout.LabelField(direction.ToString(), $"{width} × {height}");
+            }
+            EditorGUILayout.HelpBox("These dimensions update with the camera position. They are locked when generation or recording starts.", MessageType.None);
         }
 
         private static void DrawGenerateControls(SixFaceProjectionOutput projector, SixFaceProjectionOutput.InputKind kind)
@@ -298,9 +319,11 @@ namespace Turn360To2D.Editor
                 "1. 选择 360 图片、360 视频或序列帧文件夹，并输入 Cube0 的宽(X)、深(Z)、高(Y)。\n" +
                 "2. 点击“Create Cube0 (Six Faces)”创建六面屏。\n" +
                 "3. 移动主相机到最佳观测点；生成时会使用相机当前位置，不会自动复位。\n" +
-                "4. 图片选择“Generate Six PNG Images”；序列帧选择“Generate Six PNG Sequences”。\n" +
-                "5. 视频需进入 Play 模式后点击“Start Six MP4 Recordings”，结束时点击停止。\n" +
-                "6. 输出保存至 Assets/StreamingAssets/360TurnTo2D/时间戳，文件名为“时间戳_方向”。",
+                "4. 插件会依据原图分辨率、相机位置和每面四角，分别显示六面的建议输出尺寸。\n" +
+                "5. Resolution scale=1 表示保留原始角分辨率；Maximum dimension 是显存安全上限。\n" +
+                "6. 图片选择“Generate Six PNG Images”；序列帧选择“Generate Six PNG Sequences”。\n" +
+                "7. 视频需进入 Play 模式后点击“Start Six MP4 Recordings”，结束时点击停止。\n" +
+                "8. 输出保存至 Assets/StreamingAssets/360TurnTo2D/时间戳，文件名为“时间戳_方向”。",
                 MessageType.Info);
         }
 

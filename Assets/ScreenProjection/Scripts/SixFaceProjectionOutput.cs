@@ -33,8 +33,12 @@ namespace Turn360To2D
         [SerializeField] private Camera viewingCamera;
 
         [Header("2D Outputs")]
-        [Tooltip("Reference pixel height. Each face automatically calculates its width from its physical screen aspect ratio.")]
-        [Min(1)] [SerializeField] private int outputHeight = 1080;
+        [Tooltip("Multiplies the automatically calculated per-face resolution. 1.0 preserves the source panorama's angular detail.")]
+        [Range(0.25f, 2f)] [SerializeField] private float outputResolutionScale = 1f;
+        [Tooltip("Safety limit for either dimension of one face. The GPU maximum is also respected.")]
+        [Min(2)] [SerializeField] private int maximumOutputDimension = 16384;
+        // Kept only so existing scenes deserialize without losing their old value.
+        [HideInInspector] [SerializeField] private int outputHeight = 1080;
         [SerializeField] private RenderTextureFormat outputFormat = RenderTextureFormat.ARGB32;
         [SerializeField] private Shader blitShader;
 
@@ -51,6 +55,8 @@ namespace Turn360To2D
         public IReadOnlyDictionary<ScreenDirection, RenderTexture> Outputs => outputs;
         public int SequenceFrameCount => imageSequence.Count;
         public string ImageSequenceFolder => imageSequenceFolder;
+        public float OutputResolutionScale => outputResolutionScale;
+        public int MaximumOutputDimension => maximumOutputDimension;
 
         /// <summary>Moves the configured viewing camera to the optional calibrated start point.</summary>
         public void MoveViewingCameraToCalibratedStart() => PlaceViewerAtCalibratedStartingPoint();
@@ -64,6 +70,8 @@ namespace Turn360To2D
         private void OnValidate()
         {
             outputHeight = Mathf.Max(1, outputHeight);
+            outputResolutionScale = Mathf.Clamp(outputResolutionScale, 0.25f, 2f);
+            maximumOutputDimension = Mathf.Max(2, maximumOutputDimension);
             ApplyCubeLayout();
             RenderAllFaces();
         }
@@ -118,6 +126,52 @@ namespace Turn360To2D
             return output;
         }
 
+        /// <summary>
+        /// Recalculates and locks all six RenderTexture sizes for the current source,
+        /// cube geometry and viewing-camera position. Call this immediately before an
+        /// image export or recording starts. Sizes stay fixed during recording.
+        /// </summary>
+        public void PrepareOutputsForExport() => RenderAllFaces(true);
+
+        /// <summary>Returns the automatically calculated size at the current viewing point.</summary>
+        public bool TryGetRecommendedOutputDimensions(ScreenDirection direction, out int width, out int height)
+        {
+            Texture source = GetSource();
+            Transform face = FindFace(direction);
+            if (source == null || source.width <= 0 || source.height <= 0 || face == null)
+            {
+                width = 0;
+                height = 0;
+                return false;
+            }
+
+            GetFaceProjectionGeometry(direction, face, out Vector3 centre, out Vector3 right, out Vector3 up);
+            CalculateAutomaticOutputDimensions(source, centre, right, up, CurrentViewingPoint, out width, out height);
+            return true;
+        }
+
+        public bool TryGetSourceDimensions(out int width, out int height)
+        {
+            Texture source = GetSource();
+            if (source != null && source.width > 0 && source.height > 0)
+            {
+                width = source.width;
+                height = source.height;
+                return true;
+            }
+
+            if (inputKind == InputKind.Video && videoPlayer != null && videoPlayer.clip != null)
+            {
+                width = (int)videoPlayer.clip.width;
+                height = (int)videoPlayer.clip.height;
+                return width > 0 && height > 0;
+            }
+
+            width = 0;
+            height = 0;
+            return false;
+        }
+
         public void SetSequenceFrameForExport(int frameIndex)
         {
             forcedSequenceFrame = frameIndex;
@@ -167,7 +221,9 @@ namespace Turn360To2D
             RenderAllFaces();
         }
 
-        public void RenderAllFaces()
+        public void RenderAllFaces() => RenderAllFaces(false);
+
+        private void RenderAllFaces(bool rebuildOutputDimensions)
         {
             Texture source = GetSource();
             if (source == null || !EnsureMaterials()) return;
@@ -179,25 +235,11 @@ namespace Turn360To2D
             {
                 Transform face = FindFace(direction);
                 if (face == null) continue;
-                RenderTexture output = EnsureOutput(direction);
+                RenderTexture output = EnsureOutput(direction, rebuildOutputDimensions);
                 // Always sample from the actual inner plane of the physical
                 // screen. This guarantees that a Front/Left or Front/Right
                 // shared mesh edge is also the exact same sampled world point.
-                Vector3 planeCentre = GetInteriorPlaneCentre(direction, face);
-                // Front/Back run horizontally along X. Left/Right run horizontally along Z.
-                // Using Transform.right for unrotated side-wall Cubes incorrectly used X and
-                // collapsed their actual width into the wall thickness.
-                Vector3 right = direction == ScreenDirection.Left
-                    ? Vector3.forward * cubeDepth
-                    : direction == ScreenDirection.Right
-                        ? -Vector3.forward * cubeDepth
-                        : Vector3.right * cubeWidth;
-                Vector3 up = direction == ScreenDirection.Top
-                    ? -Vector3.forward * cubeDepth
-                    : direction == ScreenDirection.Bottom
-                        ? Vector3.forward * cubeDepth
-                        : (direction == ScreenDirection.Left || direction == ScreenDirection.Right ? -Vector3.up : Vector3.up) * cubeHeight;
-                if (direction == ScreenDirection.Top || direction == ScreenDirection.Bottom) right = Vector3.right * cubeWidth;
+                GetFaceProjectionGeometry(direction, face, out Vector3 planeCentre, out Vector3 right, out Vector3 up);
 
                 blitMaterial.SetVector("_ScreenCentre", planeCentre);
                 blitMaterial.SetVector("_ScreenRight", right);
@@ -235,10 +277,15 @@ namespace Turn360To2D
             return true;
         }
 
-        private RenderTexture EnsureOutput(ScreenDirection direction)
+        private RenderTexture EnsureOutput(ScreenDirection direction, bool rebuildDimensions)
         {
-            GetOutputDimensions(direction, out int width, out int height);
-            if (outputs.TryGetValue(direction, out RenderTexture output) && output != null && output.width == width && output.height == height) return output;
+            if (outputs.TryGetValue(direction, out RenderTexture output) && output != null)
+            {
+                if (!rebuildDimensions) return output;
+            }
+
+            GetOutputDimensions(direction, rebuildDimensions, out int width, out int height);
+            if (output != null && output.width == width && output.height == height) return output;
             if (output != null)
             {
                 if (RenderTexture.active == output) RenderTexture.active = null;
@@ -251,8 +298,13 @@ namespace Turn360To2D
             return output;
         }
 
-        private void GetOutputDimensions(ScreenDirection direction, out int width, out int height)
+        private void GetOutputDimensions(ScreenDirection direction, bool useAutomaticResolution, out int width, out int height)
         {
+            if (useAutomaticResolution && TryGetRecommendedOutputDimensions(direction, out width, out height)) return;
+
+            // Live wall previews use the direct world-space material, not these
+            // RenderTextures. Keep their background copies lightweight until an
+            // explicit export/recording request locks the full automatic sizes.
             float physicalWidth = direction == ScreenDirection.Left || direction == ScreenDirection.Right ? cubeDepth : cubeWidth;
             float physicalHeight = direction == ScreenDirection.Top || direction == ScreenDirection.Bottom ? cubeDepth : cubeHeight;
             height = Mathf.Max(1, outputHeight);
@@ -263,6 +315,110 @@ namespace Turn360To2D
             // video recording when a physical aspect ratio rounds to an odd size.
             if ((width & 1) != 0) width++;
             if ((height & 1) != 0) height++;
+        }
+
+        private void CalculateAutomaticOutputDimensions(
+            Texture source,
+            Vector3 centre,
+            Vector3 right,
+            Vector3 up,
+            Vector3 viewingPoint,
+            out int width,
+            out int height)
+        {
+            // A 2:1 equirectangular panorama stores 2*PI radians horizontally
+            // and PI radians vertically. Use the denser source axis so a
+            // non-perfectly-2:1 input is never needlessly downsampled.
+            float sourcePixelsPerRadian = Mathf.Max(source.width / (2f * Mathf.PI), source.height / Mathf.PI);
+
+            // Uniform pixels on a physical plane do not represent uniform
+            // angles. The derivative of normalize(ray) is largest near the
+            // point closest to the viewer, so sample the whole face and retain
+            // the maximum angular rate for both plane axes.
+            const int gridSteps = 16;
+            float maxHorizontalRadiansPerUv = 0f;
+            float maxVerticalRadiansPerUv = 0f;
+            for (int y = 0; y <= gridSteps; y++)
+            {
+                float v = y / (float)gridSteps - 0.5f;
+                for (int x = 0; x <= gridSteps; x++)
+                {
+                    float u = x / (float)gridSteps - 0.5f;
+                    Vector3 ray = centre + right * u + up * v - viewingPoint;
+                    float rayLengthSquared = ray.sqrMagnitude;
+                    if (rayLengthSquared < 0.000001f) continue;
+                    maxHorizontalRadiansPerUv = Mathf.Max(maxHorizontalRadiansPerUv,
+                        Vector3.Cross(ray, right).magnitude / rayLengthSquared);
+                    maxVerticalRadiansPerUv = Mathf.Max(maxVerticalRadiansPerUv,
+                        Vector3.Cross(ray, up).magnitude / rayLengthSquared);
+                }
+            }
+
+            // Also sample the exact closest point on the finite rectangle.
+            Vector3 eyeFromCentre = viewingPoint - centre;
+            float closestU = Mathf.Clamp(Vector3.Dot(eyeFromCentre, right) / Mathf.Max(right.sqrMagnitude, 0.000001f), -0.5f, 0.5f);
+            float closestV = Mathf.Clamp(Vector3.Dot(eyeFromCentre, up) / Mathf.Max(up.sqrMagnitude, 0.000001f), -0.5f, 0.5f);
+            Vector3 closestRay = centre + right * closestU + up * closestV - viewingPoint;
+            float closestLengthSquared = Mathf.Max(closestRay.sqrMagnitude, 0.000001f);
+            maxHorizontalRadiansPerUv = Mathf.Max(maxHorizontalRadiansPerUv,
+                Vector3.Cross(closestRay, right).magnitude / closestLengthSquared);
+            maxVerticalRadiansPerUv = Mathf.Max(maxVerticalRadiansPerUv,
+                Vector3.Cross(closestRay, up).magnitude / closestLengthSquared);
+
+            const float samplingSafetyMargin = 1.05f;
+            float requiredWidth = maxHorizontalRadiansPerUv * sourcePixelsPerRadian * samplingSafetyMargin;
+            float requiredHeight = maxVerticalRadiansPerUv * sourcePixelsPerRadian * samplingSafetyMargin;
+            float physicalAspect = right.magnitude / Mathf.Max(up.magnitude, 0.000001f);
+
+            // Preserve the physical screen aspect ratio. Raise the weaker axis
+            // instead of lowering the stronger one so no source detail is lost.
+            float targetHeight = Mathf.Max(requiredHeight, requiredWidth / Mathf.Max(physicalAspect, 0.000001f));
+            targetHeight *= outputResolutionScale;
+            float targetWidth = targetHeight * physicalAspect;
+
+            width = MakeEven(Mathf.CeilToInt(targetWidth));
+            height = MakeEven(Mathf.CeilToInt(targetHeight));
+
+            int hardwareLimit = SystemInfo.maxTextureSize > 0 ? SystemInfo.maxTextureSize : maximumOutputDimension;
+            int dimensionLimit = Mathf.Max(2, Mathf.Min(maximumOutputDimension, hardwareLimit));
+            dimensionLimit &= ~1;
+            int largestDimension = Mathf.Max(width, height);
+            if (largestDimension > dimensionLimit)
+            {
+                float limitScale = dimensionLimit / (float)largestDimension;
+                width = MakeEven(Mathf.FloorToInt(width * limitScale));
+                height = MakeEven(Mathf.FloorToInt(height * limitScale));
+            }
+        }
+
+        private void GetFaceProjectionGeometry(
+            ScreenDirection direction,
+            Transform face,
+            out Vector3 planeCentre,
+            out Vector3 right,
+            out Vector3 up)
+        {
+            planeCentre = GetInteriorPlaneCentre(direction, face);
+            // Front/Back run horizontally along X. Left/Right run horizontally along Z.
+            // These axes are also the four-corner basis used by the automatic
+            // resolution calculation, guaranteeing that sizing and rendering agree.
+            right = direction == ScreenDirection.Left
+                ? Vector3.forward * cubeDepth
+                : direction == ScreenDirection.Right
+                    ? -Vector3.forward * cubeDepth
+                    : Vector3.right * cubeWidth;
+            up = direction == ScreenDirection.Top
+                ? -Vector3.forward * cubeDepth
+                : direction == ScreenDirection.Bottom
+                    ? Vector3.forward * cubeDepth
+                    : (direction == ScreenDirection.Left || direction == ScreenDirection.Right ? -Vector3.up : Vector3.up) * cubeHeight;
+            if (direction == ScreenDirection.Top || direction == ScreenDirection.Bottom) right = Vector3.right * cubeWidth;
+        }
+
+        private static int MakeEven(int value)
+        {
+            value = Mathf.Max(2, value);
+            return (value & 1) == 0 ? value : value + 1;
         }
 
         private Material GetFaceMaterial(ScreenDirection direction, Texture panoramaSource)
